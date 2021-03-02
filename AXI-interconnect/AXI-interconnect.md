@@ -95,3 +95,44 @@ IP核配置情况如下：
 
 在任意AXI通道传输被无限期拖延时，AXI-interconnect内核都不会超时。所有的AXI从机都必须响应接收到的传输。
 
+# AXI ID的使用
+
+> **Avoiding Deadlock Using Single Slave Per ID**
+
+![image-20210225094742884](AXI-interconnect.assets/image-20210225094742884.png)
+
+为了防止死锁，手册里推荐crosser的每个SI（slave interface）采用独立的ID号，这样当SI在同一时间只会对一个MI（master interface）进行超前传输。另外，MI仍然被允许处理来自多个SI的超前传输事务。
+
+> *AXI protocol provides no means to ensure in-order completion between Write and Read transactions other than waiting for the B-Channel responses of all earlier writes to complete.*
+
+除了等待响应通道的完成，AXI协议没有提供任何方法来确保写和读之间事务的完成。
+
+
+
+# 问题实例
+
+数据传输到32次数后出现类似死锁的情况
+
+## 正常时序
+
+![image-20210226133953310](AXI-interconnect.assets/image-20210226133953310.png)
+
+## 出现问题时序
+
+**第32次传输：**
+
+![image-20210226134211813](AXI-interconnect.assets/image-20210226134211813.png)
+
+​	从图中看出，在第32次传输时axi-interconnect的slave端接收到地址信号，AWVALID和AWREADY均有效；从前面的axi-interconnect内部结构可知，信号流向为：
+
+slave interface ——> mmu——>xbar——>master interface
+
+图中WVALID在slave interface被拉高（紫色），但是mmu对应的信号没有拉高（橙色），并一直保持低。而程序中设置了看门狗，当信号长时间没有响应（4096个时钟），总线信号全部进行复位。
+
+**第33次及其后续**
+
+![image-20210226134319957](AXI-interconnect.assets/image-20210226134319957.png)
+
+由于在axi协议强调，**通信双方都不能在传输事务的所有 Transfer 完成前提前结束**，看门狗的触发将引发axi协议出错，导致后续的传输无法进行，具体体现为：
+
+写地址总线上的AWREADY无法响应，写数据总线上WREADY无法响应。 
