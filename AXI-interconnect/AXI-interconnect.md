@@ -41,7 +41,7 @@ IP核配置情况如下：
 - 交叉开关模式（性能优化）
 
   - **只支持AXI4或AXI3协议**
-  - **共享地址**，多数据（hared-Address, Multiple-Data (SAMD)）结构，共享一个写地址仲裁器，共享一个读地址仲裁器
+  - **共享地址**，多数据（shared-Address, Multiple-Data (SAMD)）结构，共享一个写地址仲裁器，共享一个读地址仲裁器
 
   <img src="AXI-interconnect.assets/image-20210224133405440.png" alt="image-20210224133405440" style="zoom:50%;" />
 
@@ -54,7 +54,7 @@ IP核配置情况如下：
 
   
 
-- 共享存取模式（面积优化）
+- 共享存取SASD模式（面积优化）
 
   - **支持任何AXI协议**，通常在AXI4-Lite使用
   - 共享的写入数据、共享的读取数据和单共享地址路径
