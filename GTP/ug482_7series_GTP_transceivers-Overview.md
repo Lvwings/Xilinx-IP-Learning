@@ -28,7 +28,7 @@ A 7中的GTP收发器结构框图如下，一共有8组收发器：
 
 通道的内部拓扑如下
 
-<img src="https://i.loli.net/2021/05/26/vFkf19Xr3ApiLxh.png" alt="image-20210526162156497" style="zoom:80%;" />
+<img src="https://i.loli.net/2021/06/01/tWh8FQCxzqKNDAp.png" alt="image-20210526162156497" style="zoom:80%;" />
 
 # 3 实现
 
@@ -48,7 +48,7 @@ pad编号即图中间一列。
 
 对于FGG484封装的FPGA来说，只有一个Quad可以进行配置：
 
-![image-20210527155232272](ug482_7series_GTP_transceivers-0.assets/image-20210527155232272.png)
+![image-20210527155232272](https://i.loli.net/2021/06/01/xyqS2cXzQNEfsTj.png)
 
 ## GTP收发器约束
 
@@ -61,9 +61,9 @@ pad编号即图中间一列。
 
 该部分内容可以参照官方UG475文档，7 Series FPGAs Packaging and Pinout Specification，该文档描述了Xilinx器件管脚命名规则，器件信号布局等封装信息，对于FPGA原理图及PCB设计人员具有非常重要的作用。
 
-![image-20210527151326462](ug482_7series_GTP_transceivers-0.assets/image-20210527151326462.png)
+![image-20210527151326462](https://i.loli.net/2021/06/01/QkopWKT3ScMPv4e.png)
 
-![image-20210527151353273](ug482_7series_GTP_transceivers-0.assets/image-20210527151353273.png)
+![image-20210527151353273](https://i.loli.net/2021/06/01/OH1F4ThNkfweYbK.png)
 
 
 
@@ -72,4 +72,4 @@ pad编号即图中间一列。
 - HR I/O bank 13 部分端口可使用
 - GTP Quad 213 端口不可使用，但是参考时钟是从这里引入
 
-<img src="ug482_7series_GTP_transceivers-0.assets/image-20210527153242011.png" alt="image-20210527153242011" style="zoom:80%;" />
+<img src="https://i.loli.net/2021/06/01/GLermPz8X9ip5bO.png" alt="image-20210527153242011" style="zoom:80%;" />
