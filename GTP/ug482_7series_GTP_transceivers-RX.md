@@ -198,5 +198,315 @@ RXPLLREFCLK来自PLL0/PLL1，不与接收时钟同步。
 
 - RXOUTCLK source：对于不要求输出恢复时钟的应用，可以选择PLL时钟作为系统时钟。但是通常应选择TXOUTCLK作为系统时钟（默认）。
 
+# 6 RX PRBS（伪随机码）检查器
 
+GTP收发器内置一个PRBS检查器，用来测试通道信号完整性。该检查器的结构如图4-24所示
 
+![image-20210607102204931](https://i.loli.net/2021/06/07/vlwf1eCcqhJ8QG4.png)
+
+## 端口与属性声明
+
+![image-20210607102325123](https://i.loli.net/2021/06/07/eN2FdpEacv5k1TO.png)
+
+![image-20210607102346308](https://i.loli.net/2021/06/07/fiClAcN6LzEp3xb.png)
+
+## PRBS检查器IP配置界面
+
+![image-20210607102954682](https://i.loli.net/2021/06/07/jfydsIinSHFu91P.png)
+
+# 7 RX 8B/10B解码器
+
+如果GTP收发器接收到的数据是8B/10B编码的，它必须在接收时解码。GTP收发器内置解码器，该解码
+
+- 支持2字节、4字节数据路径操作
+- 为正确的视差提供运行视差的菊花链接
+- 产生K码字符和状态信息输出
+- 当收到非表内数据时，输出10位字面编码值
+- 如果接收数据没有进行8B/10B编码，则可以旁路该解码器。
+
+8B/10B解码器Bit和Byte顺序如图4-33所示
+
+![image-20210607104643652](https://i.loli.net/2021/06/07/tOWgUeDwBLYF7Qb.png)
+
+## RX运行不一致
+
+两种运行不一致情况：
+
+- 当检测到RXDATA出现运行不一致错误时，RXDISPERR为高电平；
+
+- 当检测到非法的8B/10B字符时，RXNOTINTABLE端口输出为高电平。
+
+图4-34显示了RX数据接口解码数据波形，图中A数据为正确数据，B、C和D为错误数据。
+
+![image-20210607105126499](https://i.loli.net/2021/06/07/H2Bz8hx9OMigKWL.png)
+
+## 特殊字符
+
+8B/10B解码器包括特殊字符（K字符）经常用于控制功能。当RXDATA检测到位K字符时，解码器驱动RXCHARISK为高电平。
+
+如果DEC_PCOMMA_DETECT被使能，当RXDATA接收到正8B/10B comma，RXCHARISCOMMA为高电平。
+
+如果DEC_MCOMMA_DETECT被使能，当RXDATA接收到负8B/10B comma，RXCHARISCOMMA为高电平。
+
+![image-20210607110313925](https://i.loli.net/2021/06/07/XWS3bfrLjpsZKdP.png)
+
+## 端口与属性声明
+
+![image-20210607110454928](https://i.loli.net/2021/06/07/xc8DZHnTCfO3SQh.png)
+
+## 8B/10B解码器IP配置界面
+
+![image-20210607110142286](https://i.loli.net/2021/06/07/rtgJyi6wnSs5uOh.png)
+
+# 8 RX字节和字对齐
+
+输入到FPGA收发器的串行数据在解串（串并转换）之前必须进行符号边界对齐。为了保证数据对齐，发送器发送一个通常称为comma码（K码）的字符，接收器在输入的数据里查找comma码。当发下comma码后，则将comma移动到字符边界，这样使得接收到的并行数据匹配发送的并行数据。
+
+图4-25显示了10bit comma对齐过程。数据流由左向右流动，RX接收到没有对齐的数据。图中虚线为查找到的comma码，标志查找到字节边界，后续comma码之后每10bit自动划分为一个字，自此完成数据字对齐。
+
+![image-20210607110926762](https://i.loli.net/2021/06/07/qViBRM1lxyXcDWZ.png)
+
+图4-26显示左侧显示了TX发送并行数据，右侧显示了RX在comma对齐后识别到了正确的并行数据。
+
+![image-20210607111839649](https://i.loli.net/2021/06/07/YsvSZG1dwx2bocB.png)
+
+## 使能Comma对齐
+
+RXCOMMADETEN端口设置为高，使能Comma对齐模块。
+
+RXCOMMADETEN端口设置为低，会旁路该模块，可以减少路径延迟。
+
+![image-20210607112314752](https://i.loli.net/2021/06/07/26n7l4yYXSRto3M.png)
+
+## 配置Comma参数
+
+为了设置comma参数，需要配置ALIGN_MCOMMA_VALUE，ALGN_PCOMMA_VALUE和ALIGN_COMMA_ENABLE属性。
+
+comma的长度和RX_DATA_WIDTH有关。图4-27显示了comma匹配掩码模式
+
+![image-20210607133334391](https://i.loli.net/2021/06/11/SYeXnGbuAv3kagm.png)
+
+扩展的comma匹配掩码模式与之类似。
+
+![image-20210607133356793](https://i.loli.net/2021/06/11/a7Uhsl6xTVIkE2D.png)
+
+## comma状态指示
+
+当MCOMMA或者PCOMMA对齐被激活后，任何匹配的comma模式与最近的边界重新对齐。comma对齐后，RXBYTEISALIGNED信号置为高。
+
+此时可以将RXENMCOMMAALIGN和RXENPCOMMAALIGN置为0，关闭comma对齐功能，使comma对齐模块保持当前对齐位置。
+
+当RXBYTEISALIGNED置为高时，表明已经检测到comma与字节边界对齐。若后续到达的comma都可以对齐，则RXBYTEISALIGNED继续为高，否则RXBYTEISALIGNED为低。
+
+![image-20210607134238777](https://i.loli.net/2021/06/11/Iru1ZVdA9p8Qbce.png)
+
+##  comma对齐边界设定
+
+ALIGN_COMMA_WORD属性用于定义对齐边界。边界空白区域长度由RX_DATA_WIDTH属性决定，边界位置的数量由RX用户接口RXDATA的字节数决定。图4-30为可选择的字节边界：
+
+![image-20210607134706838](https://i.loli.net/2021/06/11/ECyWxYhmBeJn4wj.png)
+
+对于ALIGN_COMMA_WORD定义边界为2，comma位置为灰色位置。
+
+## comma手动对齐
+
+通过RXSLIDE信号可以设置手动comma对齐。手动comma对齐时，RXENMCOMMAALIGN和RXENPCOMMAALIGN信号输入为0。
+
+RXSLIDE信号每次置高一个RXUSRCLK2时钟周期，并行数据向左移动一位。
+
+图4-31为手动comma码对齐时序图。
+
+![image-20210607140221784](https://i.loli.net/2021/06/11/OvHsF38mEpI4d9X.png)
+
+两个RXSLIDE信号之间最少为32个RXUSRCLK2时钟。
+
+## 端口与属性声明
+
+![image-20210607160431945](https://i.loli.net/2021/06/11/naKP3uEpyR8lYcq.png)
+
+![image-20210607160446922](https://i.loli.net/2021/06/07/YyKoCWaB7sfPZuD.png)
+
+![image-20210607160503485](https://i.loli.net/2021/06/07/DN3ZLG6IulO97qx.png)
+
+![image-20210607160406955](https://i.loli.net/2021/06/11/TUgPs9uJ2Cvy8ae.png)
+
+## RX对齐IP配置界面
+
+![image-20210607160204591](https://i.loli.net/2021/06/07/YQzKyNtp6nqmT2u.png)
+
+# 9 RX弹性buffer
+
+GTP收发器内部包括两个内部并行时钟域：PMA并行时钟域XCLK和RXUSRCLK时钟域。为了正确接收数据，PMA并行速率必须匹配RXUSRCLK时钟速率，并且解决跨时钟域问题。图4-43显示了XCLK和RXUSRCLK时钟域。
+
+![image-20210607161051406](https://i.loli.net/2021/06/07/lQd43DAnmfVLKve.png)
+
+GTP提供了两种方式解决跨时钟域问题：
+
+- RX弹性缓冲器
+- RX相位对齐电路
+
+这两种方法的特性对比如表4-32所示：
+
+![image-20210607161343350](https://i.loli.net/2021/06/07/1nxJud7GsVjzaYi.png)
+
+## RX buffer 旁路
+
+旁路RX弹性缓冲区是7系列GTP收发器的高级特性。**RX相位对齐电路用来调整SIPO并行时钟和XCLK时钟域相位差异，以保证数据从SIPO可靠的传输到PCS组件。**它也通过RXUSRCLK来调整RX延迟，以补偿由于温度或者电压变化引起的延迟。RX相位延迟和对齐可以通过GTP收发器自动调整或者手动调整。图4-35显示了XCLK和RXUSRCLK时钟域。
+
+![image-20210608133807719](https://i.loli.net/2021/06/11/AKDtJLrioByxUuh.png)
+
+## 端口和属性声明
+
+![image-20210608135911563](https://i.loli.net/2021/06/11/oqlb3sznZ2KjmSX.png)
+
+## RX buffer的IP配置界面
+
+![image-20210608135840945](https://i.loli.net/2021/06/08/WDXFCA86Lx4RZkj.png)
+
+# 10 RX接口
+
+FPGA RX接口是GTX/GTH收发器并行接口，实现收发器并行数据输出到FPGA内部逻辑。**FPGA在RXUSRCLK2时钟的上升沿读取RXDATA端口数据**，该端口可以配置为2字节或者4字节。
+
+RXDATA宽度和RX_DATA_WIDTH和RX_INT_DATAWIDTH属性以及RX8B10BEN有关。并行时钟RXUSRCLK2速率由RX线速率、RXDATA宽度以及8B10B编码属性决定。RXUSRCLK时钟可以提供给PCS内部逻辑使用。
+
+## RX接口配置
+
+7系列GTP收发器包含2字节内部数据路径，通过RX_INT_DATAWIDTH属性配置。RX接口配置如表4-43所示。
+
+<img src="https://i.loli.net/2021/06/08/eICtME8PqB45Kju.png" alt="image-20210608162106402" style="zoom:67%;" />
+
+当8B/10B解码器**旁路**时，RXDISPERR和RXCHARISK端口用来扩展RXDATA端口。
+
+![image-20210608162312202](https://i.loli.net/2021/06/08/UyShVLlu8FrtHR3.png)
+
+## RXUSRCLK和RXUSRCLK2时钟产生
+
+RX接口包括两个并行时钟：RXUSRCLK和RXUSRCLK2。**RXUSRCLK用于收发器PCS内部逻辑资源使用，RXUSRCLK2用于FPGA RX接口所有信号同步时钟。**RXUSRCLK时钟产生方程如下
+
+<img src="https://i.loli.net/2021/06/08/diwnCfHrLaXpP3D.png" alt="image-20210608162510828" style="zoom:67%;" />
+
+RXUSRCLK和RXUSRCLK2时钟之间关系如表4-45所示。
+
+<img src="https://i.loli.net/2021/06/08/3IwN8cfYl1bWuGC.png" alt="image-20210608162640059" style="zoom:80%;" />
+
+使用时需要注意：
+
+- RXUSRCLK和RXUSRCLK2必须上升沿对齐，通常需要BUFG或BUFH来驱动以减少偏移（skew）
+
+- 如果通道的TX和RX使用相同的参考时钟源驱动，那么可以选择TXOUTCLK来驱动RXUSRCLK和RXUSRCLK2。当时钟校准关闭或者RX buffer旁路时，RX相位对齐电路必须用来对齐串行时钟和并行时钟。
+- 如果通道的TX和RX使用不同参考时钟，并且时钟校准没有使用，那么必须由RXOUTCLK来驱动RXUSRCLK和RXUSRCLK2，并且相位对齐电路必须使用
+
+## 端口和属性声明
+
+![image-20210608163452337](https://i.loli.net/2021/06/08/wztP4TShUbAEBDn.png)
+
+![image-20210608163509233](https://i.loli.net/2021/06/08/2CcpVYjM51WSKXQ.png)
+
+## RX接口IP配置界面
+
+![image-20210609094007593](https://i.loli.net/2021/06/09/IhZdCkEDVvHle4G.png)
+
+当选择8B/10B或其他编码时，RXCHARISK默认使用，而选择none时为可选。
+
+# 11 RX时钟校准
+
+RX弹性缓冲器用来设计桥接RXUSRCLK和XCLK时钟域。理想情况下这两个时钟应该频率和相位相同，实际应用中两者在频率和相位上会存在一定偏移。RX弹性缓冲器可以实现两个时钟域数据稳定传输。
+
+**RX时钟校准功能通过删除或者复制特定的空闲字符来防止RX弹性缓冲器上溢出或者下溢出。**
+
+![image-20210609100808007](https://i.loli.net/2021/06/09/lqwHMZTDapEg8KX.png)
+
+图4-44举例RXUSRCLK和XCLK时钟的三种应用场景：
+
+- 正常情况下，读时钟RXUSRCLK和XCLK频率相同，此时RX弹性缓冲器数据量保持稳定
+- 当读时钟XUSRCLK快于写时钟XCLK时，为避免出现读空RX弹性缓冲器，通过插值实现重复读或空读
+- 当读时钟XUSRCLK慢于写时钟XCLK时，为避免出现RX弹性缓冲器溢出，通过移除字符减少数据
+
+## 端口和属性声明
+
+![image-20210609102550972](https://i.loli.net/2021/06/09/e3Di1CLxX6UKwO2.png)
+
+## RX时钟校准IP配置界面
+
+**使用RX时钟校准的前提是使用RX弹性buffer**
+
+![image-20210610105419854](https://i.loli.net/2021/06/10/5zaZ98Wn4uxiVrC.png)
+
+用于校准的序列可以是K字符，或者反向字符（负字符）或者正常字符，在表格中勾选，对应实际序列如图4-45所示：
+
+<img src="https://i.loli.net/2021/06/10/NVxAyLCamrERcUi.png" alt="image-20210610110049857" style="zoom:80%;" />
+
+当使用多字节序列时，对应的映射如图4-46所示：
+
+<img src="https://i.loli.net/2021/06/10/dx3D2PCeubqrRVL.png" alt="image-20210610110211036" style="zoom:67%;" />
+
+同时，时钟校准还支持添加一条辅助序列用于校准，选择【use two clock correction sequences】
+
+时钟校准电路的状态可由【RXCLKCORCNT】和【RXBUFSTATUS】进行监控。默认的配置可在*_gt.v中看到：
+
+<img src="https://i.loli.net/2021/06/10/VOgMLDkaqCe57uU.png" alt="image-20210610111647860" style="zoom:67%;" />
+
+在手册中提到：
+
+> The 7 Series FPGAs Transceivers Wizard chooses an optimal setting for CLK_COR_MIN_LAT and CLK_COR_MAX_LAT based on application requirements. The values selected by the Wizard must be followed to maintain optimal performance and must not be overridden.
+
+最大延时`CLK_COR_MAX_LAT`和最小延时`CLK_COR_MIN_LAT`将由收发器向导设置，并且不要去手动修改。
+
+# 12 RX通道绑定
+
+XAUI和PCIe等协议使用多个串行收发器以产生更高的数据速率。由于每个收发器所在的通道延迟可能存在差异，这会导致通道间数据会存在“错位”现象，RX通道绑定功能就解决此问题。
+
+<img src="https://i.loli.net/2021/06/10/XJkghi4PNYKRmEM.png" alt="image-20210610112218897" style="zoom:80%;" />
+
+通常在收发器TX发送端发送一串特殊字符，称为通道绑定序列。每个收发器接收到特殊字符后，GTP接收器可以决定每个通道之间的偏移，通过RX弹性缓冲器调整延迟，保证用户接口可以无偏移接收。
+
+**RX通道绑定支持8B/10B编码，但是不支持：64B/66B，64B/67B，128B/130B，Scrambled data**
+
+## 端口和属性声明
+
+![image-20210611151133510](https://i.loli.net/2021/06/11/iaWGrD8AI1coELx.png)
+
+![image-20210611151154735](https://i.loli.net/2021/06/11/s8blwB1TEmDWAOU.png)
+
+![image-20210611151221020](https://i.loli.net/2021/06/11/F4OUsXeZ1Y2yxQo.png)
+
+## RX通道绑定IP配置界面
+
+**用RX时钟校准的前提是使用RX弹性buffer**
+
+![image-20210610112836434](https://i.loli.net/2021/06/10/lJhdzQ4wHmVNr5M.png)
+
+RX通道绑定的IP界面与RX时钟校准很相似，在配置上也基本相同。使用流程如下：
+
+1. 使能通道绑定模式
+2. 将主收发器的RXCHBONDMASTER置高
+3. 将从收发器的RXCHBONDSLAVE置高
+4. 使用直连或者菊花链的方式连接主从收发器对应通道绑定端口：主（RXCHBONDO）- 从（RXCHBONDI）
+5. 设定通道绑定序列和探测参数
+
+当主从设备距离较远时，采用直连方式容易有时序问题，解决方式之一为采用菊花链连接：
+
+<img src="https://i.loli.net/2021/06/11/D8gCAM7uosaGyVi.png" alt="image-20210611105644934" style="zoom:67%;" />
+
+**由【RXCHBONDLEVEL】端口设置主发送器经过多少周期后进行通道绑定操作**
+
+### 通道绑定序列
+
+<img src="https://i.loli.net/2021/06/11/9heLTHS1cb5DiMW.png" alt="image-20210611111121182" style="zoom: 67%;" />
+
+<img src="https://i.loli.net/2021/06/11/rhCic5gjN2Ja4Y7.png" alt="image-20210611111133253" style="zoom:67%;" />
+
+### 设定最大偏移
+
+当主机接收到通道绑定序列时，它不会立即触发通道绑定。如果从服务器有更多的延迟，则必须多到达几个字节。这个等待时间成为RX弹性缓冲区可以处理的最大偏差。
+
+如果偏差大于这个等待时间，那么在主服务器触发通道绑定时（**利用RXCHBONDO端口**），从服务器可能无法接收到序列。
+
+![image-20210611150712189](https://i.loli.net/2021/06/11/YxoKhJzQwq72bOL.png)
+
+> 这部分可能理解有偏差
+
+由于通道绑定和时钟校准都会控制从弹性buffer指针，因此需要对两个操作进行优先级设定：
+
+- CLK_COR_PRECEDENCE = 1 优先时钟校准
+- CLK_COR_PRECEDENCE = 0 优先通道绑定
